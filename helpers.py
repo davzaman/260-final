@@ -15,7 +15,7 @@ def get_mnist_train_loader(batch_size, shuffle=True):
                transform=transforms.Compose([
                    transforms.ToTensor(),
                    transforms.Normalize((0.1307,), (0.3081,))
-               ]), batch_size=batch_size, shuffle=shuffle))
+               ])), batch_size=batch_size, shuffle=shuffle)
 
 # Modified from: from advertorch_examples.utils 
 def get_mnist_test_loader(batch_size, shuffle=False):
@@ -106,6 +106,8 @@ def adv_train(model, modeln, optimizer, device, config, flag_advtrain, train_adv
                       test_advloss, advcorrect, len(test_loader.dataset),
                       100. * advcorrect / len(test_loader.dataset)))
 
+    # Python 3.2+: recursively creates the directory and does not raise exception if exists already
+    os.makedirs(config['model_dir'], exist_ok=True)
     torch.save(
         model.state_dict(),
         os.path.join(config['model_dir'], model_filename))

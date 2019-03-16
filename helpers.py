@@ -1,45 +1,28 @@
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import os
-import numpy as np
-from torchvision import datasets, transforms
+from data_loaders import get_train_loader, get_test_loader
 from advertorch.context import ctx_noparamgrad_and_eval
 
-data_dir = './data/'
-
-# from advertorch_examples.utils 
-def get_mnist_train_loader(batch_size, shuffle=True):
-    return torch.utils.data.DataLoader(
-        datasets.MNIST(data_dir, train=True, download=True,
-               transform=transforms.ToTensor()), 
-        batch_size=batch_size, shuffle=shuffle)
-
-def get_mnist_test_loader(batch_size, shuffle=False):
-    return torch.utils.data.DataLoader(
-        datasets.MNIST(data_dir, train=False, download=True,
-                   transform=transforms.ToTensor()), 
-        batch_size=batch_size, shuffle=shuffle)
-
-def adv_train(model, modeln, optimizer, device, config, flag_advtrain, train_adversary=None):
+def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain, train_adversary=None):
     # Set random seed
     torch.manual_seed(config['random_seed'])
     
     # Get training and testing
-    train_loader = get_mnist_train_loader(
-        batch_size=config['training_batch_size'], shuffle=True)
+    train_loader = get_train_loader(datasetn,
+                                    batch_size=config['training_batch_size'])
 #     test_loader = get_mnist_test_loader(
 #         batch_size=config['eval_batch_size'], shuffle=False)
 
     # Set the saved model filename and set the # epochs
     if flag_advtrain:
         nb_epoch = config['num_advtr_epoch']
-        model_filename = "mnist_" + modeln + "_advtrained.pt"
+        model_filename = datasetn + modeln + "_advtrained.pt"
         if train_adversary:
             adversary = train_adversary 
     else:
         nb_epoch = config['num_cln_epoch']
-        model_filename = "mnist_" + modeln + "_clntrained.pt"
+        model_filename = datasetn + modeln + "_clntrained.pt"
 
     # Start training
     for epoch in range(nb_epoch):
@@ -64,10 +47,10 @@ def adv_train(model, modeln, optimizer, device, config, flag_advtrain, train_adv
 
         model.eval()
         if flag_advtrain:
-            adv_eval(model, device, config['eval_batch_size'],
+            test_eval(model, device, config['eval_batch_size'],
                      flag_advtrain, adversary)
         else:
-            adv_eval(model, device, 
+            test_eval(model, device, 
                      config['eval_batch_size'], flag_advtrain)
 #         test_clnloss = 0
 #         clncorrect = 0
@@ -112,8 +95,8 @@ def adv_train(model, modeln, optimizer, device, config, flag_advtrain, train_adv
         model.state_dict(),
         os.path.join(config['model_dir'], model_filename))
 
-def adv_eval(model, device, eval_batch_size, flag_adv, adversary=None):
-    test_loader = get_mnist_test_loader(
+def test_eval(model, datasetn, device, eval_batch_size, flag_adv, adversary=None):
+    test_loader = get_test_loader(datasetn,
         batch_size=eval_batch_size, shuffle=False)
 
     test_clnloss = 0

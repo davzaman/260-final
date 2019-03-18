@@ -4,33 +4,33 @@ import os
 from data_loaders import get_train_loader, get_test_loader
 from advertorch.context import ctx_noparamgrad_and_eval
 
-def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain, train_adversary=None):
-    # Set random seed
-    torch.manual_seed(config['random_seed'])
-    
+def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain, train_adversary=None, scheduler=None):
     # Get training and testing
     train_loader = get_train_loader(datasetn,
-                                    batch_size=config['training_batch_size'])
+                                batch_size=config['training_batch_size'])
 #     test_loader = get_mnist_test_loader(
 #         batch_size=config['eval_batch_size'], shuffle=False)
 
     # Set the saved model filename and set the # epochs
     if flag_advtrain:
         nb_epoch = config['num_advtr_epoch']
-        model_filename = datasetn + modeln + "_advtrained.pt"
+        model_filename = datasetn + "_" + modeln + "_advtrained.pt"
         if train_adversary:
             adversary = train_adversary 
     else:
         nb_epoch = config['num_cln_epoch']
-        model_filename = datasetn + modeln + "_clntrained.pt"
+        model_filename = datasetn + "_" + modeln + "_clntrained.pt"
 
     # Start training
     for epoch in range(nb_epoch):
         model.train()
+        if scheduler:
+            scheduler.step()
+            
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
             if flag_advtrain:
-                # when performing attack, the model needs to be in eval mode
+                # when attacking, the model needs to be in eval mode
                 # also the parameters should be accumulating gradients
                 with ctx_noparamgrad_and_eval(model):
                     data = adversary.perturb(data, target)
@@ -40,6 +40,7 @@ def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain,
             loss = F.cross_entropy(output, target, reduction='mean')
             loss.backward()
             optimizer.step()
+            
             if batch_idx % config['log_interval'] == 0:
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
@@ -47,10 +48,10 @@ def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain,
 
         model.eval()
         if flag_advtrain:
-            test_eval(model, device, config['eval_batch_size'],
+            test_eval(model, datasetn, device, config['eval_batch_size'],
                      flag_advtrain, adversary)
         else:
-            test_eval(model, device, 
+            test_eval(model, datasetn, device, 
                      config['eval_batch_size'], flag_advtrain)
 #         test_clnloss = 0
 #         clncorrect = 0
@@ -97,7 +98,7 @@ def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain,
 
 def test_eval(model, datasetn, device, eval_batch_size, flag_adv, adversary=None):
     test_loader = get_test_loader(datasetn,
-        batch_size=eval_batch_size, shuffle=False)
+        batch_size=eval_batch_size)
 
     test_clnloss = 0
     clncorrect = 0

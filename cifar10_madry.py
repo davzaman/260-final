@@ -34,10 +34,10 @@ with open(config_path) as config_file:
 torch.manual_seed(config['random_seed'])
 
 # Create Models
-clean = cifar10CNN()
-adv = cifar10CNN()
-# clean = ResNet34()
-# adv = ResNet34()
+# clean = cifar10CNN()
+# adv = cifar10CNN()
+clean = ResNet34()
+adv = ResNet34()
 
 # Send to device for fast computation if GPU available
 clean.to(device)

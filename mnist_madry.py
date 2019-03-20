@@ -3,9 +3,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import json
-from models import cifar10CNN
+from models import cifar10CNN, ResNet34, mnistCNN, LargeCNN
 from helpers import adv_train, test_eval
-from advertorch.attacks import LinfPGDAttack, GradientSignAttack
+from advertorch.attacks import LinfPGDAttack, GradientSignAttack, SpatialTransformAttack
 import os
 
 ################
@@ -21,11 +21,11 @@ def load_model(model, path):
 ################
 
 use_cuda = torch.cuda.is_available()
-device = torch.device("cuda:1" if use_cuda else "cpu")
+device = torch.device("cuda:0" if use_cuda else "cpu")
 
-datasetn="cifar10"
-config_path='cifar_config.json'
-modeln = "madryCNN"
+datasetn="mnist"
+config_path='largecnn-config.json'
+modeln = "largeCNN"
 
 with open(config_path) as config_file:
     config = json.load(config_file)
@@ -34,23 +34,20 @@ with open(config_path) as config_file:
 torch.manual_seed(config['random_seed'])
 
 # Create Models
-clean = cifar10CNN()
-adv = cifar10CNN()
+# clean = mnistCNN()
+# adv = mnistCNN()
+
+clean = LargeCNN()
+adv = LargeCNN()
+
 
 # Send to device for fast computation if GPU available
 clean.to(device)
 adv.to(device)
 
-# Create Optimizer: SGD with momentum, weight decay, and scheduling
-clean_opt = optim.SGD(clean.parameters(), lr=.1, momentum=config['momentum'], weight_decay=config['weight_decay'])
-adv_opt = optim.SGD(clean.parameters(), lr=.1, momentum=config['momentum'], weight_decay=config['weight_decay'])
-
-# clean_opt =  optim.Adam(clean.parameters(), lr=1e-4)
-# adv_opt =  optim.Adam(adv.parameters(), lr=1e-4)
-
-# Create scheduler: milestones [0,40000, 60000] will do lr*gamma
-clean_sched = optim.lr_scheduler.MultiStepLR(clean_opt, config['step_size_schedule'], gamma=0.1)
-adv_sched = optim.lr_scheduler.MultiStepLR(adv_opt, config['step_size_schedule'], gamma=0.1)
+# Create Optimizer: Adam
+clean_opt =  optim.Adam(clean.parameters(), lr=1e-4)
+adv_opt =  optim.Adam(adv.parameters(), lr=1e-4)
 
 # Create path name for loading the models. Follows the same convention
 ## as when creating path name for saving the models on training
@@ -68,8 +65,7 @@ try:
     print("Loaded")
 except:
     # Create the file
-    adv_train(clean, modeln, datasetn, clean_opt, device, config, False, clean_sched)
-    clean.eval()
+    adv_train(clean, modeln, datasetn, clean_opt, device, config, False)
 
 # Get adversarially trained model
 print("Adversarially trained model")
@@ -78,13 +74,12 @@ try:
     print("Loaded")
 except:
     train_adv = LinfPGDAttack(
-                adv, loss_fn=nn.CrossEntropyLoss(), 
+                adv, loss_fn=nn.CrossEntropyLoss(reduction="sum"), 
                 eps=config['epsilon'], nb_iter=config['num_steps'],
                 eps_iter=config['step_size'],
                 rand_init=config['random_start'], 
                 clip_min=0.0, clip_max=1.0, targeted=False)
-    adv_train(adv, modeln, datasetn, adv_opt, device, config, True, train_adv, adv_sched)
-    adv.eval()
+    adv_train(adv, modeln, datasetn, adv_opt, device, config, True, train_adv)
 
     
 ################
@@ -93,20 +88,21 @@ except:
 
 # Create one for each clean and adv trained network
 # Adversary used to test the network (the difference is the k_eval)
+
 test_adv_clean= LinfPGDAttack(
                 clean, loss_fn=nn.CrossEntropyLoss(reduction="sum"), 
-                eps=config['epsilon'], nb_iter=config['num_steps'],
+                eps=config['epsilon'], nb_iter=config['num_steps_eval'],
                 eps_iter=config['step_size'],
                 rand_init=config['random_start'], 
                 clip_min=0.0, clip_max=1.0, targeted=False)
 test_adv_adv= LinfPGDAttack(
                 adv, loss_fn=nn.CrossEntropyLoss(reduction="sum"), 
-                eps=config['epsilon'], nb_iter=config['num_steps'],
+                eps=config['epsilon'], nb_iter=config['num_steps_eval'],
                 eps_iter=config['step_size'],
                 rand_init=config['random_start'], 
                 clip_min=0.0, clip_max=1.0, targeted=False)
 
-print("%s against PGD" % modeln)
+print("%s against _" % modeln)
 print("Clean")
 test_eval(clean, datasetn, device, config['eval_batch_size'], True, test_adv_clean)
 print("Adversarial")
@@ -121,7 +117,8 @@ test_adv_adv= GradientSignAttack(
                 eps=config['epsilon'], 
                 clip_min=0.0, clip_max=1.0, targeted=False)
 
-print("%s against FGSM" % modeln)
+
+print("%s against _" % modeln)
 print("Clean")
 test_eval(clean, datasetn, device, config['eval_batch_size'], True, test_adv_clean)
 print("Adversarial")

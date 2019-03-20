@@ -3,13 +3,14 @@ import torch.nn.functional as F
 import os
 from data_loaders import get_train_loader, get_test_loader
 from advertorch.context import ctx_noparamgrad_and_eval
+import time
 
 def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain, train_adversary=None, scheduler=None):
     # Get training and testing
     train_loader = get_train_loader(datasetn,
                                 batch_size=config['training_batch_size'])
-#     test_loader = get_mnist_test_loader(
-#         batch_size=config['eval_batch_size'], shuffle=False)
+#     test_loader = get_test_loader(datasetn,
+#         batch_size=config['eval_batch_size'])
 
     # Set the saved model filename and set the # epochs
     if flag_advtrain:
@@ -27,6 +28,7 @@ def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain,
         if scheduler:
             scheduler.step()
             
+        start = time.time()
         for batch_idx, (data, target) in enumerate(train_loader):
             data, target = data.to(device), target.to(device)
             if flag_advtrain:
@@ -41,11 +43,14 @@ def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain,
             loss.backward()
             optimizer.step()
             
+            
             if batch_idx % config['log_interval'] == 0:
+                print("\tTime elapsed: %s" % (time.time() - start))
                 print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
                     epoch, batch_idx * len(data), len(train_loader.dataset),
                     100. * batch_idx / len(train_loader), loss.item()))
 
+        """
         model.eval()
         if flag_advtrain:
             test_eval(model, datasetn, device, config['eval_batch_size'],
@@ -53,6 +58,8 @@ def adv_train(model, modeln, datasetn, optimizer, device, config, flag_advtrain,
         else:
             test_eval(model, datasetn, device, 
                      config['eval_batch_size'], flag_advtrain)
+        """
+        
 #         test_clnloss = 0
 #         clncorrect = 0
 

@@ -1,6 +1,6 @@
 {
   "_comment": "===== MODEL CONFIGURATION =====",
-  "model_dir": "models/madry",
+  "model_dir": "models/largecnn",
 
   "_comment": "===== TRAINING CONFIGURATION =====",
   "random_seed": 4557077,

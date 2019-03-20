@@ -5,6 +5,7 @@ import torch.optim as optim
 import torchvision.models as models
 import math
 
+# Reference: https://github.com/pytorch/vision/blob/master/torchvision/models/vgg.py
 class VGG(nn.Module):
 
     def __init__(self, features, num_classes=1000, init_weights=True):

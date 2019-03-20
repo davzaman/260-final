@@ -3,7 +3,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import json
-from models import cifar10CNN, ResNet34, mnistCNN, LargeCNN
+from models import mnistCNN, LargeCNN
 from helpers import adv_train, test_eval
 from advertorch.attacks import LinfPGDAttack, GradientSignAttack, SpatialTransformAttack
 import os
@@ -24,8 +24,8 @@ use_cuda = torch.cuda.is_available()
 device = torch.device("cuda:0" if use_cuda else "cpu")
 
 datasetn="mnist"
-config_path='largecnn-config.json'
-modeln = "largeCNN"
+config_path='config.json'
+modeln = "madryCNN"
 
 with open(config_path) as config_file:
     config = json.load(config_file)
@@ -34,11 +34,11 @@ with open(config_path) as config_file:
 torch.manual_seed(config['random_seed'])
 
 # Create Models
-# clean = mnistCNN()
-# adv = mnistCNN()
+clean = mnistCNN()
+adv = mnistCNN()
 
-clean = LargeCNN()
-adv = LargeCNN()
+# clean = LargeCNN()
+# adv = LargeCNN()
 
 
 # Send to device for fast computation if GPU available

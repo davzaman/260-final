@@ -9,8 +9,7 @@
   "num_cln_epoch": 2,
   "num_advtr_epoch": 2,
   "training_batch_size": 128,
-  "old, step_size_schedule": [40000, 60000],
-  "step_size_schedule": [100, 150],
+  "step_size_schedule": [40000, 60000],
   "weight_decay": 0.0002,
   "momentum": 0.9,
 
@@ -19,8 +18,7 @@
   "eval_batch_size": 100,
 
   "_comment": "=====ADVERSARIAL EXAMPLES CONFIGURATION=====",
-  "old, epsilon": 8.0,
-  "epsilon": 0.1,
+  "epsilon": 8.0,
   "num_steps": 10,
   "step_size": 2.0,
   "random_start": true
